@@ -49,6 +49,23 @@ SESSION_COOKIE_SECURE=true
 
 La app aplica un límite básico de 8 intentos de inicio de sesión por IP cada 60 segundos.
 
+## Publicación opcional por IP
+
+El despliegue puede publicarse con HTTPS en `https://IP_DEL_SERVIDOR` usando el proxy Nginx incluido y un certificado de IP de corta duración. Para activar esta modalidad se necesitan los puertos 80 y 443 y una renovación automática frecuente:
+
+```bash
+docker compose up -d api worker redis
+docker run --rm -p 80:80 \
+  -v "$PWD/certbot:/etc/letsencrypt" \
+  certbot/certbot:latest certonly --standalone \
+  --cert-name mochila-ip -d IP_DEL_SERVIDOR \
+  --preferred-profile shortlived \
+  --register-unsafely-without-email --agree-tos --non-interactive
+docker compose up -d proxy
+```
+
+Activa `SESSION_COOKIE_SECURE=true` en `.env` cuando el proxy HTTPS esté funcionando. Los certificados de IP son de corta duración y deben renovarse automáticamente; el script `deploy/renew-ip-cert.sh` detiene temporalmente el proxy durante la renovación y lo vuelve a iniciar después.
+
 ## API para scripts
 
 El flujo de scripts usa la misma sesión de cookie que la interfaz:

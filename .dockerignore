@@ -7,6 +7,7 @@ __pycache__/
 .pytest_cache/
 *.py[cod]
 data/
+certbot/
 *:Zone.Identifier
 tests/
 README.md

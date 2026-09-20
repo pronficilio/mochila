@@ -36,6 +36,18 @@ services:
       - downloader-data:/data
     command: ["python", "-m", "app.worker"]
 
+  proxy:
+    image: nginx:1.27-alpine
+    restart: unless-stopped
+    depends_on:
+      - api
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./deploy/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./certbot:/etc/letsencrypt:ro
+
 volumes:
   redis-data:
   downloader-data:
