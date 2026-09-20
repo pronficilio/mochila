@@ -56,10 +56,11 @@ viviendo en Hetzner. De forma opcional, **solo** las conexiones que yt-dlp hace 
 YouTube pueden salir por un proxy SOCKS5 de una red residencial. El resto del
 tráfico del servidor y de los contenedores continúa saliendo normalmente.
 
-El túnel Tailscale/WireGuard y el servidor SOCKS deben configurarse fuera de esta
-aplicación. El host de Hetzner y, por tanto, el contenedor `worker`, deben poder
-alcanzar el listener SOCKS residencial (por ejemplo, `100.x.x.x:1080`). No se
-instala Tailscale dentro de los contenedores.
+La infraestructura Tailscale y el servidor SOCKS residencial están documentados
+paso a paso en [docs/residential-egress.md](docs/residential-egress.md). El host de
+Hetzner y, por tanto, el contenedor `worker`, deben poder alcanzar el listener SOCKS
+residencial (por ejemplo, `100.x.x.x:1080`). No se instala Tailscale dentro de los
+contenedores.
 
 Para activarlo, edita `.env`:
 
