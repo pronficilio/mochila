@@ -1,13 +1,47 @@
 import glob
 import os
+import socket
 import subprocess
 from pathlib import Path
+from urllib.parse import urlsplit
 
 from .settings import settings
 
 
 class DownloadError(RuntimeError):
     pass
+
+
+def residential_proxy_reachable(timeout_seconds: float = 3.0) -> bool:
+    """Check the SOCKS listener without sending any traffic to YouTube."""
+    if settings.download_egress != "residential":
+        return False
+
+    proxy = urlsplit(settings.residential_proxy_url())
+    try:
+        with socket.create_connection(
+            (proxy.hostname, proxy.port), timeout=timeout_seconds
+        ):
+            return True
+    except OSError:
+        return False
+
+
+def _redact_proxy_secrets(value: str) -> str:
+    """Keep a proxy URL with userinfo out of worker errors and logs."""
+    if settings.residential_proxy is None:
+        return value
+
+    proxy_url = settings.residential_proxy_url()
+    proxy = urlsplit(proxy_url)
+    if proxy.username is None and proxy.password is None:
+        return value
+
+    host = proxy.hostname or "proxy"
+    if ":" in host and not host.startswith("["):
+        host = f"[{host}]"
+    port = f":{proxy.port}" if proxy.port is not None else ""
+    return value.replace(proxy_url, f"{proxy.scheme}://{host}{port}")
 
 
 def _existing_outputs(job_id: str) -> set[str]:
@@ -58,6 +92,9 @@ def build_command(job: dict[str, str]) -> list[str]:
         "--concurrent-fragments", "4",
     ]
 
+    if settings.download_egress == "residential":
+        cmd += ["--proxy", settings.residential_proxy_url()]
+
     if mode == "video":
         cmd += [
             "--format",
@@ -80,6 +117,11 @@ def build_command(job: dict[str, str]) -> list[str]:
 
 def run_download(job: dict[str, str]) -> Path:
     before = _existing_outputs(job["id"])
+    if (
+        settings.download_egress == "residential"
+        and not residential_proxy_reachable()
+    ):
+        raise DownloadError("Residential egress is unavailable")
     cmd = build_command(job)
 
     try:
@@ -98,7 +140,10 @@ def run_download(job: dict[str, str]) -> Path:
 
     if result.returncode != 0:
         tail = (result.stdout or "")[-5000:]
-        raise DownloadError(f"yt-dlp failed with exit code {result.returncode}:\n{tail}")
+        raise DownloadError(
+            f"yt-dlp failed with exit code {result.returncode}:\n"
+            f"{_redact_proxy_secrets(tail)}"
+        )
 
     return _pick_output(job["id"], before)
 

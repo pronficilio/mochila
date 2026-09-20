@@ -1,4 +1,5 @@
 import pytest
+from pydantic import SecretStr
 from fastapi.testclient import TestClient
 
 from app import auth, jobs, main
@@ -189,3 +190,28 @@ def test_la_contrasena_no_se_devuelve_y_la_ui_no_expone_detalles_tecnicos(client
     html = responses[0].text.lower()
     for forbidden in ("api token", "bearer", "api_key", "authorization"):
         assert forbidden not in html
+
+
+def test_egress_requires_session_and_does_not_expose_proxy(client, monkeypatch):
+    test_client, _ = client
+    monkeypatch.setattr(settings, "download_egress", "residential")
+    monkeypatch.setattr(
+        settings,
+        "residential_proxy",
+        SecretStr("socks5h://user:password@100.64.0.10:1080"),
+    )
+    monkeypatch.setattr(main, "residential_proxy_reachable", lambda: True)
+
+    assert test_client.get("/v1/egress").status_code == 401
+    assert login(test_client).status_code == 200
+
+    response = test_client.get("/v1/egress")
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "mode": "residential",
+        "configured": True,
+        "reachable": True,
+    }
+    assert "100.64.0.10" not in response.text
+    assert "user:password" not in response.text

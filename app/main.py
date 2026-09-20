@@ -5,7 +5,7 @@ from fastapi.responses import FileResponse, HTMLResponse
 
 from .auth import is_authenticated, login, logout, require_session
 from .db import job_key, r
-from .downloader import delete_job_files
+from .downloader import delete_job_files, residential_proxy_reachable
 from .jobs import create_download_token, create_job, consume_download_token, get_job
 from .models import CreateJobRequest, JobResponse, LoginRequest
 from .settings import settings
@@ -60,6 +60,16 @@ def auth_me(request: Request) -> dict[str, bool]:
         "authenticated": is_authenticated(
             request.cookies.get(settings.session_cookie_name)
         )
+    }
+
+
+@app.get("/v1/egress", dependencies=[Depends(require_session)])
+def egress_status() -> dict[str, str | bool | None]:
+    residential = settings.download_egress == "residential"
+    return {
+        "mode": settings.download_egress,
+        "configured": residential and settings.residential_proxy is not None,
+        "reachable": residential_proxy_reachable() if residential else None,
     }
 
 

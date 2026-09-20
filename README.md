@@ -49,6 +49,65 @@ SESSION_COOKIE_SECURE=true
 
 La app aplica un límite básico de 8 intentos de inicio de sesión por IP cada 60 segundos.
 
+## Residential YouTube egress
+
+Mochila, FastAPI, Redis, el worker, yt-dlp, FFmpeg y los archivos finales siguen
+viviendo en Hetzner. De forma opcional, **solo** las conexiones que yt-dlp hace a
+YouTube pueden salir por un proxy SOCKS5 de una red residencial. El resto del
+tráfico del servidor y de los contenedores continúa saliendo normalmente.
+
+El túnel Tailscale/WireGuard y el servidor SOCKS deben configurarse fuera de esta
+aplicación. El host de Hetzner y, por tanto, el contenedor `worker`, deben poder
+alcanzar el listener SOCKS residencial (por ejemplo, `100.x.x.x:1080`). No se
+instala Tailscale dentro de los contenedores.
+
+Para activarlo, edita `.env`:
+
+```dotenv
+DOWNLOAD_EGRESS=residential
+RESIDENTIAL_PROXY=socks5h://100.64.0.10:1080
+```
+
+Se recomienda `socks5h://`: así la resolución DNS de los hosts de YouTube también
+ocurre a través del proxy. También se acepta `socks5://`. Si el SOCKS exige
+autenticación, usa únicamente la variable de entorno, por ejemplo
+`socks5h://usuario:contraseña@100.64.0.10:1080`; no la compartas ni la incluyas en
+el repositorio. Mochila no escribe las credenciales del proxy en logs ni en errores.
+
+Recrea los servicios tras cambiar `.env`:
+
+```bash
+docker compose up -d --build
+```
+
+Comprueba la conectividad desde el worker sin revelar la URL ni sus credenciales:
+
+```bash
+docker compose exec worker python -c 'from app.downloader import residential_proxy_reachable; print("reachable" if residential_proxy_reachable() else "unreachable")'
+```
+
+Con una sesión de Mochila también puedes consultar el estado del egress. El
+endpoint no devuelve host, IP ni credenciales del proxy:
+
+```bash
+curl -b cookies.txt -sS http://127.0.0.1:8080/v1/egress
+```
+
+En modo residencial, un proxy inaccesible hace que el trabajo falle rápidamente
+con `Residential egress is unavailable`. No existe fallback automático a salida
+directa: de ese modo la IP de Hetzner nunca se usa por accidente para una descarga.
+
+Para regresar al comportamiento habitual:
+
+```dotenv
+DOWNLOAD_EGRESS=direct
+RESIDENTIAL_PROXY=
+```
+
+Las configuraciones residenciales sin `RESIDENTIAL_PROXY`, o con esquemas distintos
+de `socks5://` y `socks5h://`, impiden que el servicio inicie. Esta fase no añade
+cookies, inicio de sesión de Google ni PO Tokens.
+
 ## Publicación opcional por IP
 
 El despliegue puede publicarse con HTTPS en `https://IP_DEL_SERVIDOR` usando el proxy Nginx incluido y un certificado de IP de corta duración. Para activar esta modalidad se necesitan los puertos 80 y 443 y una renovación automática frecuente:

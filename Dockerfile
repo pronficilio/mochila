@@ -19,6 +19,7 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --upgrade pip \
     && pip install -r requirements.txt \
+    && python -c "import socks" \
     && yt-dlp --version
 
 COPY app ./app
