@@ -1,0 +1,41 @@
+services:
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    volumes:
+      - redis-data:/data
+
+  api:
+    build: .
+    restart: unless-stopped
+    env_file: .env
+    depends_on:
+      redis:
+        condition: service_healthy
+    volumes:
+      - downloader-data:/data
+    ports:
+      # Private-by-default. Reach it with an SSH tunnel:
+      # ssh -L 8080:127.0.0.1:8080 user@your-hetzner
+      - "127.0.0.1:8080:8080"
+
+  worker:
+    build: .
+    restart: unless-stopped
+    env_file: .env
+    depends_on:
+      redis:
+        condition: service_healthy
+    volumes:
+      - downloader-data:/data
+    command: ["python", "-m", "app.worker"]
+
+volumes:
+  redis-data:
+  downloader-data:

@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Private Downloader</title>
+  <style>
+    body { max-width: 760px; margin: 64px auto; padding: 0 20px; font-family: system-ui, sans-serif; }
+    input, select, button { font: inherit; padding: 10px; margin: 6px 0; }
+    input[type=text], input[type=password] { width: 100%; box-sizing: border-box; }
+    .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+    pre { white-space: pre-wrap; background: #f4f4f4; padding: 12px; border-radius: 8px; }
+  </style>
+</head>
+<body>
+  <h1>Private Downloader</h1>
+  <p>For videos you own or are authorized to download.</p>
+
+  <label>API token</label>
+  <input id="token" type="password" autocomplete="off">
+
+  <label>YouTube URL</label>
+  <input id="url" type="text" placeholder="https://www.youtube.com/watch?v=...">
+
+  <div class="row">
+    <select id="mode">
+      <option value="video">Video</option>
+      <option value="audio">Audio</option>
+    </select>
+
+    <select id="height">
+      <option value="720">720p</option>
+      <option value="1080" selected>1080p</option>
+      <option value="1440">1440p</option>
+      <option value="2160">2160p</option>
+    </select>
+
+    <select id="audioFormat">
+      <option value="m4a" selected>M4A</option>
+      <option value="mp3">MP3</option>
+    </select>
+
+    <button id="go">Download</button>
+  </div>
+
+  <pre id="status">idle</pre>
+
+<script>
+const tokenEl = document.getElementById('token');
+const urlEl = document.getElementById('url');
+const statusEl = document.getElementById('status');
+tokenEl.value = sessionStorage.getItem('downloader-token') || '';
+
+function headers() {
+  const token = tokenEl.value.trim();
+  sessionStorage.setItem('downloader-token', token);
+  return { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' };
+}
+
+async function getJob(id) {
+  const r = await fetch(`/v1/jobs/${id}`, { headers: headers() });
+  if (!r.ok) throw new Error(await r.text());
+  return r.json();
+}
+
+async function poll(id) {
+  for (;;) {
+    const job = await getJob(id);
+    statusEl.textContent = JSON.stringify(job, null, 2);
+    if (job.status === 'done') {
+      const r = await fetch(`/v1/jobs/${id}/download-token`, {
+        method: 'POST',
+        headers: headers()
+      });
+      if (!r.ok) throw new Error(await r.text());
+      const ticket = await r.json();
+      window.location.assign(ticket.url);
+      return;
+    }
+    if (job.status === 'failed') throw new Error(job.error || 'Download failed');
+    await new Promise(resolve => setTimeout(resolve, 1500));
+  }
+}
+
+document.getElementById('go').onclick = async () => {
+  try {
+    statusEl.textContent = 'submitting...';
+    const payload = {
+      url: urlEl.value.trim(),
+      mode: document.getElementById('mode').value,
+      max_height: Number(document.getElementById('height').value),
+      audio_format: document.getElementById('audioFormat').value
+    };
+    const r = await fetch('/v1/jobs', {
+      method: 'POST',
+      headers: headers(),
+      body: JSON.stringify(payload)
+    });
+    if (!r.ok) throw new Error(await r.text());
+    const job = await r.json();
+    await poll(job.id);
+  } catch (e) {
+    statusEl.textContent = String(e);
+  }
+};
+</script>
+</body>
+</html>
