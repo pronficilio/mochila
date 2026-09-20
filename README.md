@@ -58,7 +58,7 @@ docker compose up -d api worker redis
 docker run --rm -p 80:80 \
   -v "$PWD/certbot:/etc/letsencrypt" \
   certbot/certbot:latest certonly --standalone \
-  --cert-name mochila-ip -d IP_DEL_SERVIDOR \
+  --cert-name mochila-ip --ip-address IP_DEL_SERVIDOR \
   --preferred-profile shortlived \
   --register-unsafely-without-email --agree-tos --non-interactive
 docker compose up -d proxy
