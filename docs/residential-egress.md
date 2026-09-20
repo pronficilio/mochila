@@ -38,7 +38,9 @@ The idempotent installer installs Tailscale if absent, installs `dante-server`,
 detects the normal IPv4 default-route interface, and enables `tailscaled`, a boot
 renderer and `danted`. Supply `TAILSCALE_AUTHKEY` only in the command environment
 for non-interactive enrolment; the script never writes it. Without it, `tailscale
-up` displays the one-time enrolment URL.
+up` displays the one-time enrolment URL. During its first package installation it
+temporarily masks `danted`, so the distribution's default configuration never gets
+a chance to listen before the tailnet-only configuration is written.
 
 The generated policy binds only `tailscale0:1080`, allows only
 `HETZNER_TAILSCALE_IP/32`, and sends proxy traffic to the normal residential default

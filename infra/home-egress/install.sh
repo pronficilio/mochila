@@ -49,7 +49,15 @@ install_tailscale() {
 
 install_tailscale
 apt-get update
-apt-get install -y --no-install-recommends dante-server curl iproute2
+if ! dpkg-query -W -f='${db:Status-Status}' dante-server 2>/dev/null | grep -qx installed; then
+  # Do not let the package post-install hook start Dante with its distribution
+  # default configuration before the tailnet-only configuration exists.
+  systemctl mask danted.service
+  apt-get install -y --no-install-recommends dante-server curl iproute2
+  systemctl unmask danted.service
+else
+  apt-get install -y --no-install-recommends dante-server curl iproute2
+fi
 
 install -d -m 0755 /etc/mochila-home-egress /etc/systemd/system/danted.service.d
 printf '%s\n' "${HETZNER_TAILSCALE_IP}" >/etc/mochila-home-egress/hetzner-tailscale-ip
