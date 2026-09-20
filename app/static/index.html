@@ -244,6 +244,7 @@
       for (;;) {
         const job = await readJob(id);
         if (job.status === 'done') {
+          setDownloadStatus('Tu archivo está listo. Iniciando la descarga…');
           const response = await fetch(`/v1/jobs/${id}/download-token`, {
             method: 'POST',
             credentials: 'same-origin'
@@ -258,7 +259,11 @@
           return;
         }
         if (job.status === 'failed') throw new Error('download');
-        setDownloadStatus('Preparando tu descarga…');
+        if (job.status === 'queued') {
+          setDownloadStatus('Tu descarga está en fila. Empezará en un momento…');
+        } else {
+          setDownloadStatus('Estamos obteniendo el video y preparando tu archivo…');
+        }
         await new Promise(resolve => setTimeout(resolve, 1500));
       }
     }
@@ -306,7 +311,7 @@
     downloadForm.addEventListener('submit', async event => {
       event.preventDefault();
       downloadButton.disabled = true;
-      setDownloadStatus('Preparando tu descarga…');
+      setDownloadStatus('Recibimos tu enlace. Iniciando la descarga…');
       const payload = {
         url: document.getElementById('url').value.trim(),
         mode: modeEl.value,

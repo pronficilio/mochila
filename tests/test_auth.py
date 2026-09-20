@@ -190,6 +190,9 @@ def test_la_contrasena_no_se_devuelve_y_la_ui_no_expone_detalles_tecnicos(client
     html = responses[0].text.lower()
     for forbidden in ("api token", "bearer", "api_key", "authorization"):
         assert forbidden not in html
+    assert "preparando tu descarga" not in html
+    assert "tu descarga está en fila" in html
+    assert "estamos obteniendo el video" in html
 
 
 def test_egress_requires_session_and_does_not_expose_proxy(client, monkeypatch):
