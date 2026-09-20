@@ -42,6 +42,11 @@ up` displays the one-time enrolment URL. During its first package installation i
 temporarily masks `danted`, so the distribution's default configuration never gets
 a chance to listen before the tailnet-only configuration is written.
 
+The installer supports Ubuntu under WSL2/systemd: it reads the Linux IPv4 default
+route (for example, `default via ... dev eth0`) and uses that route's interface as
+Dante's outbound interface. It does not hardcode `eth0`; if no valid default-route
+interface exists, it stops with `Unable to determine residential egress interface`.
+
 The generated policy binds only `tailscale0:1080`, allows only
 `HETZNER_TAILSCALE_IP/32`, and sends proxy traffic to the normal residential default
 route. Internet cannot reach port 1080 because no public interface listens on it.

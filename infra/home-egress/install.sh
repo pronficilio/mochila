@@ -23,6 +23,8 @@ fi
 
 # shellcheck disable=SC1091
 . /etc/os-release
+ID="${ID:-}"
+VERSION_CODENAME="${VERSION_CODENAME:-}"
 if [[ "${ID}" != "debian" && "${ID}" != "ubuntu" ]]; then
   echo "Only Debian and Ubuntu are supported by this installer" >&2
   exit 1
@@ -54,10 +56,12 @@ if ! dpkg-query -W -f='${db:Status-Status}' dante-server 2>/dev/null | grep -qx 
   # default configuration before the tailnet-only configuration exists.
   systemctl mask danted.service
   apt-get install -y --no-install-recommends dante-server curl iproute2
-  systemctl unmask danted.service
 else
   apt-get install -y --no-install-recommends dante-server curl iproute2
 fi
+# A previous interrupted run may have installed the package while it was masked.
+# Unmasking does not start it; it only permits the configured start below.
+systemctl unmask danted.service
 
 install -d -m 0755 /etc/mochila-home-egress /etc/systemd/system/danted.service.d
 printf '%s\n' "${HETZNER_TAILSCALE_IP}" >/etc/mochila-home-egress/hetzner-tailscale-ip
@@ -66,11 +70,23 @@ cat >/usr/local/sbin/mochila-render-danted-config <<'EOF'
 #!/usr/bin/env bash
 set -euo pipefail
 
-hetzner_ip="$(< /etc/mochila-home-egress/hetzner-tailscale-ip)"
-egress_interface="$(ip -4 route show default | awk 'NR == 1 { print $5 }')"
+hetzner_ip=""
+if [[ -r /etc/mochila-home-egress/hetzner-tailscale-ip ]]; then
+  IFS= read -r hetzner_ip < /etc/mochila-home-egress/hetzner-tailscale-ip || true
+fi
+if [[ ! "${hetzner_ip}" =~ ^100\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$ ]]; then
+  echo "Unable to determine authorized Hetzner Tailscale IP" >&2
+  exit 1
+fi
 
-if [[ -z "${egress_interface}" ]]; then
-  echo "No IPv4 default-route interface is available" >&2
+# WSL2 exposes the residential default route as an ordinary Linux route (usually
+# eth0). Select the interface field from that route; never hardcode its name.
+egress_interface=""
+egress_interface="$(ip -4 route show default 2>/dev/null \
+  | awk '$1 == "default" && $5 != "" { print $5; exit }' || true)"
+if [[ -z "${egress_interface}" ]] \
+  || ! ip link show dev "${egress_interface}" >/dev/null 2>&1; then
+  echo "Unable to determine residential egress interface" >&2
   exit 1
 fi
 if ! ip link show tailscale0 >/dev/null 2>&1; then
