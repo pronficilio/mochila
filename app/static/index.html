@@ -1,0 +1,342 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#f6f3ed">
+  <title>Mochila</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #24231f;
+      --muted: #777269;
+      --paper: #f6f3ed;
+      --card: #fffdf9;
+      --line: #ded8ce;
+      --accent: #2e6b54;
+      --accent-dark: #245541;
+      --danger: #a3483f;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      padding: 32px 16px;
+      background: var(--paper);
+      color: var(--ink);
+      font: 16px/1.5 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    main {
+      width: min(100%, 560px);
+      padding: clamp(32px, 8vw, 72px) clamp(22px, 7vw, 56px);
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 24px;
+      box-shadow: 0 18px 50px rgb(55 47 35 / 8%);
+    }
+
+    header { margin-bottom: 42px; }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(2.2rem, 8vw, 3.4rem);
+      letter-spacing: -0.06em;
+      line-height: 1;
+    }
+
+    header p {
+      margin: 12px 0 0;
+      color: var(--muted);
+      font-size: 1.08rem;
+    }
+
+    form { display: grid; gap: 18px; }
+
+    input, select, button {
+      width: 100%;
+      min-height: 52px;
+      border-radius: 12px;
+      font: inherit;
+    }
+
+    input, select {
+      padding: 0 15px;
+      border: 1px solid var(--line);
+      background: #fff;
+      color: var(--ink);
+    }
+
+    input:focus, select:focus, button:focus-visible {
+      outline: 3px solid rgb(46 107 84 / 24%);
+      outline-offset: 2px;
+      border-color: var(--accent);
+    }
+
+    button {
+      padding: 0 18px;
+      border: 0;
+      background: var(--accent);
+      color: white;
+      cursor: pointer;
+      font-weight: 650;
+      transition: background 160ms ease, transform 160ms ease;
+    }
+
+    button:hover { background: var(--accent-dark); }
+    button:active { transform: translateY(1px); }
+    button:disabled { cursor: wait; opacity: .65; }
+
+    .options {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    [hidden] { display: none !important; }
+
+    .status {
+      min-height: 1.5em;
+      margin: 24px 0 0;
+      color: var(--muted);
+      text-align: center;
+    }
+
+    .status.error { color: var(--danger); }
+
+    .sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
+    }
+
+    @media (max-width: 420px) {
+      body { padding: 12px; }
+      main { border-radius: 18px; }
+      .options { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <h1>Mochila</h1>
+      <p>Tus videos, para llevar.</p>
+    </header>
+
+    <section id="login-view" hidden>
+      <form id="login-form">
+        <label class="sr-only" for="password">Contraseña</label>
+        <input id="password" type="password" autocomplete="current-password" placeholder="Contraseña" required>
+        <button type="submit">Entrar</button>
+      </form>
+      <p id="login-status" class="status" role="status" aria-live="polite"></p>
+    </section>
+
+    <section id="app-view" hidden>
+      <form id="download-form">
+        <label class="sr-only" for="url">Enlace de YouTube</label>
+        <input id="url" type="url" autocomplete="url" placeholder="Pega aquí el enlace de YouTube" required>
+
+        <div class="options">
+          <label>
+            <span class="sr-only">Formato</span>
+            <select id="mode">
+              <option value="video">Video</option>
+              <option value="audio">Audio</option>
+            </select>
+          </label>
+
+          <label id="height-wrap">
+            <span class="sr-only">Calidad</span>
+            <select id="height">
+              <option value="720">720p</option>
+              <option value="1080" selected>1080p</option>
+              <option value="1440">1440p</option>
+              <option value="2160">2160p</option>
+            </select>
+          </label>
+
+          <label id="audio-format-wrap" hidden>
+            <span class="sr-only">Formato de audio</span>
+            <select id="audio-format">
+              <option value="m4a" selected>M4A</option>
+              <option value="mp3">MP3</option>
+            </select>
+          </label>
+        </div>
+
+        <button id="download" type="submit">Descargar</button>
+      </form>
+      <p id="download-status" class="status" role="status" aria-live="polite"></p>
+    </section>
+  </main>
+
+  <script>
+    const loginView = document.getElementById('login-view');
+    const appView = document.getElementById('app-view');
+    const loginForm = document.getElementById('login-form');
+    const passwordEl = document.getElementById('password');
+    const loginStatus = document.getElementById('login-status');
+    const downloadForm = document.getElementById('download-form');
+    const downloadButton = document.getElementById('download');
+    const downloadStatus = document.getElementById('download-status');
+    const modeEl = document.getElementById('mode');
+    const heightWrap = document.getElementById('height-wrap');
+    const audioFormatWrap = document.getElementById('audio-format-wrap');
+
+    function showLogin(message = '') {
+      loginView.hidden = false;
+      appView.hidden = true;
+      loginStatus.textContent = message;
+      loginStatus.classList.toggle('error', Boolean(message));
+      passwordEl.focus();
+    }
+
+    function showApp() {
+      loginView.hidden = true;
+      appView.hidden = false;
+      loginStatus.textContent = '';
+      document.getElementById('url').focus();
+    }
+
+    function setDownloadStatus(message, error = false) {
+      downloadStatus.textContent = message;
+      downloadStatus.classList.toggle('error', error);
+    }
+
+    async function checkSession() {
+      try {
+        const response = await fetch('/auth/me', { credentials: 'same-origin' });
+        if (!response.ok) {
+          showLogin('No se pudo comprobar la sesión.');
+          return;
+        }
+        const session = await response.json();
+        if (session.authenticated) showApp();
+        else showLogin();
+      } catch {
+        showLogin('No se pudo conectar con Mochila.');
+      }
+    }
+
+    async function readJob(id) {
+      const response = await fetch(`/v1/jobs/${id}`, { credentials: 'same-origin' });
+      if (response.status === 401) {
+        showLogin('Tu sesión terminó. Vuelve a entrar.');
+        throw new Error('session');
+      }
+      if (!response.ok) throw new Error('job');
+      return response.json();
+    }
+
+    async function waitForJob(id) {
+      for (;;) {
+        const job = await readJob(id);
+        if (job.status === 'done') {
+          const response = await fetch(`/v1/jobs/${id}/download-token`, {
+            method: 'POST',
+            credentials: 'same-origin'
+          });
+          if (response.status === 401) {
+            showLogin('Tu sesión terminó. Vuelve a entrar.');
+            throw new Error('session');
+          }
+          if (!response.ok) throw new Error('ticket');
+          const ticket = await response.json();
+          window.location.assign(ticket.url);
+          return;
+        }
+        if (job.status === 'failed') throw new Error('download');
+        setDownloadStatus('Preparando tu descarga…');
+        await new Promise(resolve => setTimeout(resolve, 1500));
+      }
+    }
+
+    modeEl.addEventListener('change', () => {
+      const audio = modeEl.value === 'audio';
+      heightWrap.hidden = audio;
+      audioFormatWrap.hidden = !audio;
+    });
+
+    loginForm.addEventListener('submit', async event => {
+      event.preventDefault();
+      const button = loginForm.querySelector('button');
+      button.disabled = true;
+      loginStatus.textContent = '';
+      loginStatus.classList.remove('error');
+      try {
+        const response = await fetch('/auth/login', {
+          method: 'POST',
+          credentials: 'same-origin',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ password: passwordEl.value })
+        });
+        if (response.status === 429) {
+          loginStatus.textContent = 'Espera un momento e inténtalo de nuevo.';
+          loginStatus.classList.add('error');
+        } else if (response.status === 401) {
+          loginStatus.textContent = 'La contraseña no es correcta.';
+          loginStatus.classList.add('error');
+        } else if (!response.ok) {
+          loginStatus.textContent = 'No se pudo entrar.';
+          loginStatus.classList.add('error');
+        } else {
+          passwordEl.value = '';
+          showApp();
+        }
+      } catch {
+        loginStatus.textContent = 'No se pudo conectar con Mochila.';
+        loginStatus.classList.add('error');
+      } finally {
+        button.disabled = false;
+      }
+    });
+
+    downloadForm.addEventListener('submit', async event => {
+      event.preventDefault();
+      downloadButton.disabled = true;
+      setDownloadStatus('Preparando tu descarga…');
+      const payload = {
+        url: document.getElementById('url').value.trim(),
+        mode: modeEl.value,
+        max_height: Number(document.getElementById('height').value),
+        audio_format: document.getElementById('audio-format').value
+      };
+      try {
+        const response = await fetch('/v1/jobs', {
+          method: 'POST',
+          credentials: 'same-origin',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        if (response.status === 401) {
+          showLogin('Tu sesión terminó. Vuelve a entrar.');
+          return;
+        }
+        if (!response.ok) throw new Error('submit');
+        const job = await response.json();
+        await waitForJob(job.id);
+      } catch (error) {
+        if (error.message !== 'session') {
+          setDownloadStatus('No se pudo descargar el video.', true);
+        }
+      } finally {
+        downloadButton.disabled = false;
+      }
+    });
+
+    checkSession();
+  </script>
+</body>
+</html>
