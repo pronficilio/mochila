@@ -42,6 +42,9 @@ up` displays the one-time enrolment URL. During its first package installation i
 temporarily masks `danted`, so the distribution's default configuration never gets
 a chance to listen before the tailnet-only configuration is written.
 
+Keep `install.sh` and `render-danted-config.sh` together: the installer validates
+the renderer is present before it changes packages or services.
+
 The installer supports Ubuntu under WSL2/systemd: it reads the Linux IPv4 default
 route (for example, `default via ... dev eth0`) and uses that route's interface as
 Dante's outbound interface. It does not hardcode `eth0`; if no valid default-route

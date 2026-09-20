@@ -8,11 +8,17 @@ if [[ "${EUID}" -ne 0 ]]; then
   exit 1
 fi
 
-: "${HETZNER_TAILSCALE_IP:?Set Hetzner's Tailscale IPv4 address, e.g. 100.64.0.20}"
+: "${HETZNER_TAILSCALE_IP:?Set the Hetzner Tailscale IPv4 address, e.g. 100.64.0.20}"
 TAILSCALE_HOSTNAME="${TAILSCALE_HOSTNAME:-home-mini}"
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+RENDERER_SOURCE="${SCRIPT_DIR}/render-danted-config.sh"
 
 if [[ ! "${HETZNER_TAILSCALE_IP}" =~ ^100\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$ ]]; then
   echo "HETZNER_TAILSCALE_IP must be a 100.x.y.z Tailscale IPv4 address" >&2
+  exit 1
+fi
+if [[ ! -f "${RENDERER_SOURCE}" ]]; then
+  echo "Missing renderer: ${RENDERER_SOURCE}" >&2
   exit 1
 fi
 
@@ -65,71 +71,7 @@ systemctl unmask danted.service
 
 install -d -m 0755 /etc/mochila-home-egress /etc/systemd/system/danted.service.d
 printf '%s\n' "${HETZNER_TAILSCALE_IP}" >/etc/mochila-home-egress/hetzner-tailscale-ip
-
-cat >/usr/local/sbin/mochila-render-danted-config <<'EOF'
-#!/usr/bin/env bash
-set -euo pipefail
-
-hetzner_ip=""
-if [[ -r /etc/mochila-home-egress/hetzner-tailscale-ip ]]; then
-  IFS= read -r hetzner_ip < /etc/mochila-home-egress/hetzner-tailscale-ip || true
-fi
-if [[ ! "${hetzner_ip}" =~ ^100\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$ ]]; then
-  echo "Unable to determine authorized Hetzner Tailscale IP" >&2
-  exit 1
-fi
-
-# WSL2 exposes the residential default route as an ordinary Linux route (usually
-# eth0). Select the interface field from that route; never hardcode its name.
-egress_interface=""
-egress_interface="$(ip -4 route show default 2>/dev/null \
-  | awk '$1 == "default" && $5 != "" { print $5; exit }' || true)"
-if [[ -z "${egress_interface}" ]] \
-  || ! ip link show dev "${egress_interface}" >/dev/null 2>&1; then
-  echo "Unable to determine residential egress interface" >&2
-  exit 1
-fi
-if ! ip link show tailscale0 >/dev/null 2>&1; then
-  echo "tailscale0 is not available" >&2
-  exit 1
-fi
-
-umask 077
-cat >/etc/danted.conf <<CONFIG
-logoutput: syslog
-internal: tailscale0 port = 1080
-external: ${egress_interface}
-
-clientmethod: none
-socksmethod: none
-
-user.privileged: proxy
-user.notprivileged: nobody
-user.libwrap: nobody
-
-# Only the Hetzner tailnet node may open a SOCKS connection.
-client pass {
-    from: ${hetzner_ip}/32 to: 0.0.0.0/0
-    log: connect error
-}
-client block {
-    from: 0.0.0.0/0 to: 0.0.0.0/0
-    log: connect error
-}
-
-# Hetzner can proxy TCP and UDP to the public Internet, never the tailnet.
-socks pass {
-    from: ${hetzner_ip}/32 to: 0.0.0.0/0
-    command: connect udpassociate
-    log: connect error
-}
-socks block {
-    from: 0.0.0.0/0 to: 0.0.0.0/0
-    log: connect error
-}
-CONFIG
-EOF
-chmod 0755 /usr/local/sbin/mochila-render-danted-config
+install -m 0755 "${RENDERER_SOURCE}" /usr/local/sbin/mochila-render-danted-config
 
 cat >/etc/systemd/system/mochila-render-danted-config.service <<'EOF'
 [Unit]
