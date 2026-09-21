@@ -51,9 +51,12 @@ Dante's outbound interface. It does not hardcode `eth0`; if no valid default-rou
 interface exists, it stops with `Unable to determine residential egress interface`.
 
 The generated policy binds only `tailscale0:1080`, allows only
-`HETZNER_TAILSCALE_IP/32`, and sends proxy traffic to the normal residential default
-route. Internet cannot reach port 1080 because no public interface listens on it.
-Verify the exact listener and record its temporary comparison value:
+`HETZNER_TAILSCALE_IP/32`, and sends proxy traffic to the normal residential IPv4
+default route. It emits `external.protocol: ipv4` immediately before the detected
+`external:` interface. This is deliberate: WSL2/home networks can resolve AAAA
+records while lacking usable IPv6 Internet routing. Internet cannot reach port 1080
+because no public interface listens on it. Verify the exact listener and record its
+temporary comparison value:
 
 ```bash
 ./infra/home-egress/check.sh
@@ -98,6 +101,12 @@ SOCKS_FROM_WORKER == HOME_PUBLIC_IP
 ```
 
 Do not activate residential mode before this passes.
+
+This IP comparison is necessary but not a complete YouTube health check: it proves
+basic IPv4 egress through the SOCKS listener, not a Googlevideo CDN transfer. After
+any egress infrastructure change, also run a small public YouTube download through
+Mochila. A future automated YouTube smoke test must cover extraction and a real CDN
+transfer through SOCKS; `api.ipify.org` alone is insufficient.
 
 ## Enable Mochila after passing the gate
 

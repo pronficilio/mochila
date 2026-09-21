@@ -32,6 +32,7 @@ trap 'rm -f "${temporary_config}"' EXIT
   printf '%s\n' \
     'logoutput: syslog' \
     'internal: tailscale0 port = 1080' \
+    'external.protocol: ipv4' \
     "external: ${egress_interface}" \
     '' \
     'clientmethod: none' \
