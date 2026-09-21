@@ -100,7 +100,10 @@ systemctl is-active --quiet danted.service
 
 main_pid="$(systemctl show --value --property MainPID danted.service)"
 [[ "${main_pid}" =~ ^[1-9][0-9]*$ ]] || { echo "Unable to determine danted MainPID" >&2; exit 1; }
-nsenter -t "${main_pid}" -m grep -Fqx 'precedence ::ffff:0:0/96 100' /etc/gai.conf
+[[ "$(readlink "/proc/1/ns/mnt")" != "$(readlink "/proc/${main_pid}/ns/mnt")" ]] \
+  || { echo "danted does not have a private mount namespace" >&2; exit 1; }
+grep -Fq ' /etc/gai.conf ' "/proc/${main_pid}/mountinfo" \
+  || { echo "danted does not have the private gai.conf bind mount" >&2; exit 1; }
 
 rollback_needed=0
 echo "Applied danted-only IPv4 resolver policy"

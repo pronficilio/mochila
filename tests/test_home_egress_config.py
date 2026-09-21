@@ -74,3 +74,14 @@ def test_danted_private_gai_policy_is_complete_and_ipv4_first():
         in dropin
     )
     assert 'install -m 0644 "${GAI_SOURCE}" /etc/mochila-home-egress/danted-gai.conf' in installer
+
+
+def test_danted_policy_verifies_its_private_mount_without_nsenter():
+    repository = Path(__file__).resolve().parents[1]
+    apply_script = (
+        repository / "infra/home-egress/apply-danted-ipv4-policy.sh"
+    ).read_text()
+
+    assert 'readlink "/proc/${main_pid}/ns/mnt"' in apply_script
+    assert '"/proc/${main_pid}/mountinfo"' in apply_script
+    assert "nsenter" not in apply_script
