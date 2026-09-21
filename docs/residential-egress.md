@@ -63,11 +63,10 @@ temporary comparison value:
 ```
 
 The listener must show `tailscale0`/`100.x`, never `0.0.0.0:1080` or a WAN address.
-The installer also bind-mounts a private, complete glibc `gai.conf` into the
-`danted` systemd mount namespace. It prioritizes IPv4 only for Dante's
-`getaddrinfo()` calls; `/etc/gai.conf`, DNS, Windows and WSL networking outside that
-service remain unchanged. This is necessary because current yt-dlp normalizes
-`socks5://` proxy URLs to remote SOCKS hostname resolution for compatibility.
+Mochila uses a small yt-dlp wrapper in residential mode to preserve the local DNS
+semantics of `socks5://`; it resolves IPv4 on the worker before connecting through
+Dante. Dante therefore needs no private resolver configuration, and `/etc/gai.conf`,
+DNS, Windows and WSL networking remain unchanged.
 If UFW is used, add defence in depth but never open 1080 globally:
 
 ```bash

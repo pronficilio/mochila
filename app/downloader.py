@@ -93,8 +93,9 @@ def build_command(job: dict[str, str]) -> list[str]:
     ]
 
     if settings.download_egress == "residential":
-        # Dante's service-private resolver policy prefers IPv4 on its residential
-        # IPv4-only route. Keep this explicit for yt-dlp connections as well.
+        # yt-dlp's legacy SOCKS5 compatibility maps socks5:// to socks5h://.
+        # The wrapper preserves local IPv4 DNS before traffic enters Dante.
+        cmd[0:1] = ["python", "-m", "app.ytdlp_runner"]
         cmd += ["--force-ipv4", "--proxy", settings.residential_proxy_url()]
 
     if mode == "video":

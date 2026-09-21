@@ -69,11 +69,10 @@ DOWNLOAD_EGRESS=residential
 RESIDENTIAL_PROXY=socks5://100.64.0.10:1080
 ```
 
-El modo residencial usa `socks5://` y añade `--force-ipv4` a yt-dlp. La versión
-actual de yt-dlp conserva compatibilidad y resuelve nombres SOCKS dentro de Dante;
-la configuración residencial instala una política privada de `danted` que prefiere
-IPv4, sin modificar la resolución global de home-mini. Las conexiones TCP y las
-descargas salen por el SOCKS residencial. Si el SOCKS exige
+El modo residencial usa `socks5://` y añade `--force-ipv4` a yt-dlp. Mochila usa un
+wrapper pequeño para preservar la resolución SOCKS5 local de IPv4: los nombres se
+resuelven en el worker y las conexiones TCP y descargas salen por el SOCKS
+residencial. Si el SOCKS exige
 autenticación, usa únicamente la variable de entorno, por ejemplo
 `socks5://usuario:contraseña@100.64.0.10:1080`; no la compartas ni la incluyas en
 el repositorio. Mochila no escribe las credenciales del proxy en logs ni en errores.

@@ -32,6 +32,7 @@ def test_direct_does_not_add_proxy(monkeypatch):
 
     command = downloader.build_command(valid_job())
 
+    assert command[0] == "yt-dlp"
     assert "--proxy" not in command
     assert "--force-ipv4" not in command
 
@@ -42,6 +43,7 @@ def test_residential_adds_exact_configured_proxy(monkeypatch):
 
     command = downloader.build_command(valid_job())
 
+    assert command[:3] == ["python", "-m", "app.ytdlp_runner"]
     proxy_index = command.index("--proxy")
     assert command[proxy_index + 1] == proxy
     assert command[proxy_index - 1] == "--force-ipv4"

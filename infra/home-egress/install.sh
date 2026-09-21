@@ -12,19 +12,15 @@ fi
 TAILSCALE_HOSTNAME="${TAILSCALE_HOSTNAME:-home-mini}"
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 RENDERER_SOURCE="${SCRIPT_DIR}/render-danted-config.sh"
-GAI_SOURCE="${SCRIPT_DIR}/danted-gai.conf"
-DANTED_DROPIN_SOURCE="${SCRIPT_DIR}/danted.service.d/mochila.conf"
 
 if [[ ! "${HETZNER_TAILSCALE_IP}" =~ ^100\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$ ]]; then
   echo "HETZNER_TAILSCALE_IP must be a 100.x.y.z Tailscale IPv4 address" >&2
   exit 1
 fi
-for source in "${RENDERER_SOURCE}" "${GAI_SOURCE}" "${DANTED_DROPIN_SOURCE}"; do
-  if [[ ! -f "${source}" ]]; then
-    echo "Missing infrastructure source: ${source}" >&2
-    exit 1
-  fi
-done
+if [[ ! -f "${RENDERER_SOURCE}" ]]; then
+  echo "Missing renderer: ${RENDERER_SOURCE}" >&2
+  exit 1
+fi
 
 if [[ ! -r /etc/os-release ]]; then
   echo "Only Debian and Ubuntu are supported by this installer" >&2
@@ -76,7 +72,6 @@ systemctl unmask danted.service
 install -d -m 0755 /etc/mochila-home-egress /etc/systemd/system/danted.service.d
 printf '%s\n' "${HETZNER_TAILSCALE_IP}" >/etc/mochila-home-egress/hetzner-tailscale-ip
 install -m 0755 "${RENDERER_SOURCE}" /usr/local/sbin/mochila-render-danted-config
-install -m 0644 "${GAI_SOURCE}" /etc/mochila-home-egress/danted-gai.conf
 
 cat >/etc/systemd/system/mochila-render-danted-config.service <<'EOF'
 [Unit]
@@ -93,7 +88,16 @@ ExecStart=/usr/local/sbin/mochila-render-danted-config
 WantedBy=multi-user.target
 EOF
 
-install -m 0644 "${DANTED_DROPIN_SOURCE}" /etc/systemd/system/danted.service.d/mochila.conf
+cat >/etc/systemd/system/danted.service.d/mochila.conf <<'EOF'
+[Unit]
+Wants=network-online.target tailscaled.service mochila-render-danted-config.service
+After=network-online.target tailscaled.service mochila-render-danted-config.service
+Requires=mochila-render-danted-config.service
+
+[Service]
+Restart=always
+RestartSec=5
+EOF
 
 systemctl daemon-reload
 systemctl enable --now tailscaled
