@@ -93,8 +93,8 @@ def build_command(job: dict[str, str]) -> list[str]:
     ]
 
     if settings.download_egress == "residential":
-        # Dante's residential host has IPv4-only Internet egress. Use local DNS
-        # resolution and send the selected IPv4 address through the SOCKS tunnel.
+        # Dante's service-private resolver policy prefers IPv4 on its residential
+        # IPv4-only route. Keep this explicit for yt-dlp connections as well.
         cmd += ["--force-ipv4", "--proxy", settings.residential_proxy_url()]
 
     if mode == "video":

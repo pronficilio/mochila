@@ -63,6 +63,11 @@ temporary comparison value:
 ```
 
 The listener must show `tailscale0`/`100.x`, never `0.0.0.0:1080` or a WAN address.
+The installer also bind-mounts a private, complete glibc `gai.conf` into the
+`danted` systemd mount namespace. It prioritizes IPv4 only for Dante's
+`getaddrinfo()` calls; `/etc/gai.conf`, DNS, Windows and WSL networking outside that
+service remain unchanged. This is necessary because current yt-dlp normalizes
+`socks5://` proxy URLs to remote SOCKS hostname resolution for compatibility.
 If UFW is used, add defence in depth but never open 1080 globally:
 
 ```bash
