@@ -10,7 +10,7 @@ class LoginRequest(BaseModel):
 class CreateJobRequest(BaseModel):
     url: str
     mode: Literal["video", "audio"] = "video"
-    max_height: int | None = Field(default=None, ge=144, le=4320)
+    max_height: int | None = Field(default=None, ge=144, le=1080)
     audio_format: Literal["m4a", "mp3"] = "m4a"
 
     @field_validator("url")

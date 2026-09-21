@@ -1,7 +1,7 @@
 from pathlib import Path
 from typing import Literal
 
-from pydantic import SecretStr, field_validator, model_validator
+from pydantic import Field, SecretStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -15,7 +15,7 @@ class Settings(BaseSettings):
     download_timeout_seconds: int = 3600
     download_egress: Literal["direct", "residential"] = "direct"
     residential_proxy: SecretStr | None = None
-    default_max_height: int = 1080
+    default_max_height: int = Field(default=1080, ge=144, le=1080)
     session_ttl_seconds: int = 30 * 24 * 60 * 60
     session_cookie_name: str = "mochila_session"
     session_cookie_secure: bool = False

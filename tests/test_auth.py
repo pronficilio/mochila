@@ -138,6 +138,17 @@ def test_endpoint_protegido_con_sesion(client):
     assert response.json()["status"] == "queued"
 
 
+def test_calidad_superior_a_1080p_es_rechazada(client):
+    test_client, _ = client
+    assert login(test_client).status_code == 200
+
+    response = test_client.post(
+        "/v1/jobs", json={**valid_job(), "max_height": 1440}
+    )
+
+    assert response.status_code == 422
+
+
 def test_logout_invalida_la_sesion(client):
     test_client, fake = client
     assert login(test_client).status_code == 200
@@ -193,6 +204,11 @@ def test_la_contrasena_no_se_devuelve_y_la_ui_no_expone_detalles_tecnicos(client
     assert "preparando tu descarga" not in html
     assert "tu descarga está en fila" in html
     assert "estamos obteniendo el video" in html
+    assert "480p (calidad baja)" in responses[0].text
+    assert "720p (calidad alta)" in responses[0].text
+    assert "1080p (calidad muy alta)" in responses[0].text
+    assert "1440p" not in responses[0].text
+    assert "2160p" not in responses[0].text
 
 
 def test_egress_requires_session_and_does_not_expose_proxy(client, monkeypatch):
