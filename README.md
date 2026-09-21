@@ -66,13 +66,14 @@ Para activarlo, edita `.env`:
 
 ```dotenv
 DOWNLOAD_EGRESS=residential
-RESIDENTIAL_PROXY=socks5h://100.64.0.10:1080
+RESIDENTIAL_PROXY=socks5://100.64.0.10:1080
 ```
 
-Se recomienda `socks5h://`: así la resolución DNS de los hosts de YouTube también
-ocurre a través del proxy. También se acepta `socks5://`. Si el SOCKS exige
+El modo residencial usa `socks5://` y añade `--force-ipv4` a yt-dlp. Los nombres de
+YouTube se resuelven en Hetzner y las conexiones TCP y descargas salen por el SOCKS
+residencial. Esto evita depender de IPv6 en home-mini. Si el SOCKS exige
 autenticación, usa únicamente la variable de entorno, por ejemplo
-`socks5h://usuario:contraseña@100.64.0.10:1080`; no la compartas ni la incluyas en
+`socks5://usuario:contraseña@100.64.0.10:1080`; no la compartas ni la incluyas en
 el repositorio. Mochila no escribe las credenciales del proxy en logs ni en errores.
 
 Recrea los servicios tras cambiar `.env`:
@@ -105,9 +106,9 @@ DOWNLOAD_EGRESS=direct
 RESIDENTIAL_PROXY=
 ```
 
-Las configuraciones residenciales sin `RESIDENTIAL_PROXY`, o con esquemas distintos
-de `socks5://` y `socks5h://`, impiden que el servicio inicie. Esta fase no añade
-cookies, inicio de sesión de Google ni PO Tokens.
+Las configuraciones residenciales sin `RESIDENTIAL_PROXY`, o con un esquema distinto
+de `socks5://`, impiden que el servicio inicie. Esta fase no añade cookies, inicio
+de sesión de Google ni PO Tokens.
 
 ## Publicación opcional por IP
 

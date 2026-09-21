@@ -33,16 +33,18 @@ def test_direct_does_not_add_proxy(monkeypatch):
     command = downloader.build_command(valid_job())
 
     assert "--proxy" not in command
+    assert "--force-ipv4" not in command
 
 
 def test_residential_adds_exact_configured_proxy(monkeypatch):
-    proxy = "socks5h://100.64.0.10:1080"
+    proxy = "socks5://100.64.0.10:1080"
     configure_residential(monkeypatch, proxy)
 
     command = downloader.build_command(valid_job())
 
     proxy_index = command.index("--proxy")
     assert command[proxy_index + 1] == proxy
+    assert command[proxy_index - 1] == "--force-ipv4"
 
 
 def test_residential_without_proxy_fails_validation():
@@ -75,9 +77,10 @@ def test_empty_proxy_is_allowed_for_direct_and_rejected_for_residential():
 @pytest.mark.parametrize("proxy", [
     "http://100.64.0.10:1080",
     "https://100.64.0.10:1080",
+    "socks5h://100.64.0.10:1080",
 ])
-def test_http_proxy_schemes_are_rejected(proxy):
-    with pytest.raises(ValidationError, match="must use socks5"):
+def test_non_residential_proxy_schemes_are_rejected(proxy):
+    with pytest.raises(ValidationError, match="must use socks5://"):
         Settings(
             _env_file=None,
             app_password="test-password",
@@ -101,11 +104,8 @@ def test_invalid_proxy_configuration_error_redacts_credentials():
     assert proxy not in str(error.value)
 
 
-@pytest.mark.parametrize("proxy", [
-    "socks5://100.64.0.10:1080",
-    "socks5h://100.64.0.10:1080",
-])
-def test_socks_proxy_schemes_are_accepted(proxy):
+def test_socks5_proxy_scheme_is_accepted():
+    proxy = "socks5://100.64.0.10:1080"
     configured = Settings(
         _env_file=None,
         app_password="test-password",
@@ -117,7 +117,7 @@ def test_socks_proxy_schemes_are_accepted(proxy):
 
 
 def test_proxy_credentials_do_not_appear_in_errors_or_representation(monkeypatch):
-    proxy = "socks5h://user:password@100.64.0.10:1080"
+    proxy = "socks5://user:password@100.64.0.10:1080"
     configure_residential(monkeypatch, proxy)
     monkeypatch.setattr(downloader, "residential_proxy_reachable", lambda: True)
     monkeypatch.setattr(
@@ -138,7 +138,7 @@ def test_proxy_credentials_do_not_appear_in_errors_or_representation(monkeypatch
 
 
 def test_residential_unreachable_fails_closed_without_starting_ytdlp(monkeypatch):
-    configure_residential(monkeypatch, "socks5h://100.64.0.10:1080")
+    configure_residential(monkeypatch, "socks5://100.64.0.10:1080")
     monkeypatch.setattr(downloader, "residential_proxy_reachable", lambda: False)
 
     def should_not_run(*args, **kwargs):
@@ -153,7 +153,7 @@ def test_residential_unreachable_fails_closed_without_starting_ytdlp(monkeypatch
 
 
 def test_command_is_argv_list_not_a_shell_command(monkeypatch):
-    configure_residential(monkeypatch, "socks5h://100.64.0.10:1080")
+    configure_residential(monkeypatch, "socks5://100.64.0.10:1080")
 
     command = downloader.build_command(valid_job())
 

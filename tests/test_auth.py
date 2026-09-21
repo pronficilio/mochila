@@ -217,7 +217,7 @@ def test_egress_requires_session_and_does_not_expose_proxy(client, monkeypatch):
     monkeypatch.setattr(
         settings,
         "residential_proxy",
-        SecretStr("socks5h://user:password@100.64.0.10:1080"),
+        SecretStr("socks5://user:password@100.64.0.10:1080"),
     )
     monkeypatch.setattr(main, "residential_proxy_reachable", lambda: True)
 

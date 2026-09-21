@@ -45,8 +45,8 @@ class Settings(BaseSettings):
         from urllib.parse import urlsplit
 
         proxy = urlsplit(value.get_secret_value())
-        if proxy.scheme not in {"socks5", "socks5h"}:
-            raise ValueError("RESIDENTIAL_PROXY must use socks5:// or socks5h://")
+        if proxy.scheme != "socks5":
+            raise ValueError("RESIDENTIAL_PROXY must use socks5://")
         if not proxy.hostname:
             raise ValueError("RESIDENTIAL_PROXY must include a host")
         try:

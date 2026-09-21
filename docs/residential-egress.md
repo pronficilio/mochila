@@ -114,10 +114,12 @@ Edit `/opt/mochila/.env` using the home Tailscale address, never its WAN address
 
 ```dotenv
 DOWNLOAD_EGRESS=residential
-RESIDENTIAL_PROXY=socks5h://100.x.y.z:1080
+RESIDENTIAL_PROXY=socks5://100.x.y.z:1080
 ```
 
-`socks5h` routes YouTube DNS resolution too. Recreate only consumers:
+Residential mode resolves YouTube names in Hetzner, forces IPv4 in yt-dlp, and sends
+the resulting TCP/media connections through the SOCKS listener. Recreate only
+consumers:
 
 ```bash
 cd /opt/mochila && docker compose up -d --build api worker
@@ -134,8 +136,8 @@ without revealing the proxy. This is a Mochila cookie, not a YouTube cookie.
 
 Submit a small public video in the normal UI and inspect the worker with `cd
 /opt/mochila && docker compose logs --tail=100 worker`. Its argv must contain
-`--proxy socks5h://100.x.y.z:1080`; success is `queued`, `running`, then `done` with
-the final file stored in Hetzner. If YouTube still returns bot verification, retain
+`--force-ipv4 --proxy socks5://100.x.y.z:1080`; success is `queued`, `running`, then
+`done` with the final file stored in Hetzner. If YouTube still returns bot verification, retain
 the worker output and stop: this deliberately adds no cookies, Google account, PO
 token, or direct fallback. Home reboot starts `tailscaled`, renderer and `danted`;
 when home-mini is offline Mochila fails promptly with `Residential egress is
