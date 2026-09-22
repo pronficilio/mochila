@@ -24,4 +24,8 @@ RUN pip install --upgrade pip \
 
 COPY app ./app
 
+# Fail the image build if the pinned external PO provider cannot register with
+# the installed yt-dlp version. This makes provider discovery reproducible.
+RUN python -c "from app.ytdlp_runner import configure_bgutil_pot_provider; configure_bgutil_pot_provider(); from yt_dlp.extractor.youtube.pot.provider import _pot_providers; assert _pot_providers.value['BgUtilHTTP'].PROVIDER_VERSION == '2.0.0'"
+
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8080"]

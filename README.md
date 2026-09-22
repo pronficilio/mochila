@@ -108,8 +108,47 @@ RESIDENTIAL_PROXY=
 ```
 
 Las configuraciones residenciales sin `RESIDENTIAL_PROXY`, o con un esquema distinto
-de `socks5://`, impiden que el servicio inicie. Esta fase no añade cookies, inicio
-de sesión de Google ni PO Tokens.
+de `socks5://`, impiden que el servicio inicie.
+
+### PO Tokens automáticos para YouTube
+
+En modo residencial Mochila ejecuta el cliente `mweb` de yt-dlp y solicita los PO
+Tokens GVS necesarios a `bgutil-ytdlp-pot-provider`. Es un provider automático: no
+usa una cuenta Google, cookies de cuenta, cookies exportadas ni tokens pegados a
+mano. El plugin de Python y el servidor HTTP privado se fijan ambos a la versión
+`2.0.0` para que el despliegue sea reproducible.
+
+El servicio `pot-provider` solo vive en la red interna de Docker: no tiene puertos
+publicados. yt-dlp recibe estos argumentos efectivos únicamente en modo
+`residential`:
+
+```text
+--force-ipv4
+--proxy socks5://TAILSCALE_HOME_IP:1080
+--extractor-args youtube:player_client=mweb;fetch_pot=auto
+--extractor-args youtubepot-bgutilhttp:base_url=http://pot-provider:4416
+```
+
+El provider recibe el SOCKS configurado desde el plugin, por lo que sus peticiones
+para generar el token salen por la misma ruta residencial; no se crea fallback
+directo. `YOUTUBE_POT_PROVIDER_URL` debe conservar el valor interno de Compose:
+
+```dotenv
+YOUTUBE_POT_PROVIDER_URL=http://pot-provider:4416
+```
+
+Para comprobar que está activo sin hacer una petición a YouTube:
+
+```bash
+docker compose exec worker python -m app.ytdlp_runner -v --version
+docker compose logs --tail=50 pot-provider
+```
+
+En una descarga verbose yt-dlp debe listar `bgutil:http-2.0.0 (external)` dentro de
+`PO Token Providers` y solicitar un token GVS de `mweb` cuando YouTube lo requiera.
+Un HTTP 429 o el mensaje de verificación se registra como `YOUTUBE_RATE_LIMITED`;
+Mochila no hace fallback a la IP de Hetzner. Espera antes de volver a probar para no
+intensificar un soft block.
 
 ## Publicación opcional por IP
 

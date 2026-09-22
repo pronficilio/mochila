@@ -51,8 +51,18 @@ def configure_socks5_local_dns() -> None:
         setattr(module, "clean_proxies", clean_proxies_preserving_socks5)
 
 
+def configure_bgutil_pot_provider() -> None:
+    """Load the installed HTTP provider before yt-dlp creates YouTube extractors.
+
+    The provider package registers itself through import side effects. Loading it
+    explicitly makes discovery deterministic for this wrapped residential command.
+    """
+    importlib.import_module("yt_dlp_plugins.extractor.getpot_bgutil_http")
+
+
 def main(argv: list[str] | None = None) -> None:
     configure_socks5_local_dns()
+    configure_bgutil_pot_provider()
     import yt_dlp
 
     yt_dlp.main(sys.argv[1:] if argv is None else argv)

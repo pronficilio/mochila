@@ -35,6 +35,7 @@ def test_direct_does_not_add_proxy(monkeypatch):
     assert command[0] == "yt-dlp"
     assert "--proxy" not in command
     assert "--force-ipv4" not in command
+    assert "--extractor-args" not in command
 
 
 def test_residential_adds_exact_configured_proxy(monkeypatch):
@@ -47,6 +48,13 @@ def test_residential_adds_exact_configured_proxy(monkeypatch):
     proxy_index = command.index("--proxy")
     assert command[proxy_index + 1] == proxy
     assert command[proxy_index - 1] == "--force-ipv4"
+    extractor_args = [
+        command[index + 1]
+        for index, argument in enumerate(command)
+        if argument == "--extractor-args"
+    ]
+    assert "youtube:player_client=mweb;fetch_pot=auto" in extractor_args
+    assert "youtubepot-bgutilhttp:base_url=http://pot-provider:4416" in extractor_args
 
 
 def test_residential_without_proxy_fails_validation():
@@ -162,3 +170,27 @@ def test_command_is_argv_list_not_a_shell_command(monkeypatch):
     assert isinstance(command, list)
     assert command[-2:] == ["--", valid_job()["url"]]
     assert all(isinstance(argument, str) for argument in command)
+
+
+@pytest.mark.parametrize("output, category", [
+    ("ERROR: HTTP Error 429: Too Many Requests", "YOUTUBE_RATE_LIMITED"),
+    ("Sign in to confirm you're not a bot", "YOUTUBE_RATE_LIMITED"),
+    ("Error fetching GVS PO Token from provider", "YOUTUBE_PO_TOKEN_UNAVAILABLE"),
+    ("Unsupported YouTube extractor response", "YOUTUBE_EXTRACTOR_FAILURE"),
+])
+def test_youtube_failures_have_stable_categories(output, category):
+    assert downloader.classify_youtube_failure(output) == category
+
+
+def test_pot_provider_rejects_credentials_and_non_http_urls():
+    for provider in (
+        "https://pot-provider:4416",
+        "http://user:password@pot-provider:4416",
+        "http://pot-provider:4416/get_pot",
+    ):
+        with pytest.raises(ValidationError):
+            Settings(
+                _env_file=None,
+                app_password="test-password",
+                youtube_pot_provider_url=provider,
+            )

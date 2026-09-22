@@ -17,3 +17,13 @@ def test_residential_wrapper_patches_ytdlp_import_sites():
     from yt_dlp.YoutubeDL import clean_proxies
 
     assert clean_proxies is ytdlp_runner.clean_proxies_preserving_socks5
+
+
+def test_residential_wrapper_loads_bgutil_http_provider():
+    ytdlp_runner.configure_bgutil_pot_provider()
+
+    from yt_dlp.extractor.youtube.pot.provider import _pot_providers
+
+    provider = _pot_providers.value["BgUtilHTTP"]
+    assert provider.PROVIDER_NAME == "bgutil:http"
+    assert provider.PROVIDER_VERSION == "2.0.0"

@@ -4,3 +4,5 @@ redis>=5,<7
 pydantic-settings>=2.5,<3
 yt-dlp[default]>=2026.8.19
 PySocks>=1.7.1,<2
+# Keep this in lockstep with the pot-provider Docker image in docker-compose.yml.
+bgutil-ytdlp-pot-provider==2.0.0

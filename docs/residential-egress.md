@@ -138,11 +138,17 @@ curl -b cookies.txt -sS https://178.105.138.91/v1/egress
 It must return `{"mode":"residential","configured":true,"reachable":true}`
 without revealing the proxy. This is a Mochila cookie, not a YouTube cookie.
 
+Residential downloads also use yt-dlp `mweb` with the private BgUtils automatic PO
+Token provider. The provider gets the configured SOCKS route from yt-dlp; it has no
+published host port and does not use a Google account or cookies. See the
+"PO Tokens automáticos para YouTube" section in the README for the exact arguments.
+
 Submit a small public video in the normal UI and inspect the worker with `cd
 /opt/mochila && docker compose logs --tail=100 worker`. Its argv must contain
-`--force-ipv4 --proxy socks5://100.x.y.z:1080`; success is `queued`, `running`, then
+`--force-ipv4 --proxy socks5://100.x.y.z:1080` plus `mweb` and the private PO
+provider extractor arguments; success is `queued`, `running`, then
 `done` with the final file stored in Hetzner. If YouTube still returns bot verification, retain
 the worker output and stop: this deliberately adds no cookies, Google account, PO
-token, or direct fallback. Home reboot starts `tailscaled`, renderer and `danted`;
+token, or direct fallback. Home reboot starts `tailscaled` and `danted`;
 when home-mini is offline Mochila fails promptly with `Residential egress is
 unavailable`, never direct egress.

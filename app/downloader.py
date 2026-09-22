@@ -12,6 +12,20 @@ class DownloadError(RuntimeError):
     pass
 
 
+def classify_youtube_failure(output: str) -> str:
+    """Return a stable, non-secret failure category for worker logs and jobs."""
+    normalized = output.lower()
+    if (
+        "http error 429" in normalized
+        or "too many requests" in normalized
+        or "sign in to confirm you're not a bot" in normalized
+    ):
+        return "YOUTUBE_RATE_LIMITED"
+    if "po token" in normalized or "pot provider" in normalized:
+        return "YOUTUBE_PO_TOKEN_UNAVAILABLE"
+    return "YOUTUBE_EXTRACTOR_FAILURE"
+
+
 def residential_proxy_reachable(timeout_seconds: float = 3.0) -> bool:
     """Check the SOCKS listener without sending any traffic to YouTube."""
     if settings.download_egress != "residential":
@@ -96,7 +110,13 @@ def build_command(job: dict[str, str]) -> list[str]:
         # yt-dlp's legacy SOCKS5 compatibility maps socks5:// to socks5h://.
         # The wrapper preserves local IPv4 DNS before traffic enters Dante.
         cmd[0:1] = ["python", "-m", "app.ytdlp_runner"]
-        cmd += ["--force-ipv4", "--proxy", settings.residential_proxy_url()]
+        cmd += [
+            "--force-ipv4",
+            "--proxy", settings.residential_proxy_url(),
+            "--extractor-args", "youtube:player_client=mweb;fetch_pot=auto",
+            "--extractor-args",
+            f"youtubepot-bgutilhttp:base_url={settings.youtube_pot_provider_url}",
+        ]
 
     if mode == "video":
         cmd += [
@@ -143,8 +163,9 @@ def run_download(job: dict[str, str]) -> Path:
 
     if result.returncode != 0:
         tail = (result.stdout or "")[-5000:]
+        failure = classify_youtube_failure(tail)
         raise DownloadError(
-            f"yt-dlp failed with exit code {result.returncode}:\n"
+            f"{failure}: yt-dlp failed with exit code {result.returncode}:\n"
             f"{_redact_proxy_secrets(tail)}"
         )
 

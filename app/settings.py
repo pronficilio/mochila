@@ -15,6 +15,7 @@ class Settings(BaseSettings):
     download_timeout_seconds: int = 3600
     download_egress: Literal["direct", "residential"] = "direct"
     residential_proxy: SecretStr | None = None
+    youtube_pot_provider_url: str = "http://pot-provider:4416"
     default_max_height: int = Field(default=1080, ge=144, le=1080)
     session_ttl_seconds: int = 30 * 24 * 60 * 60
     session_cookie_name: str = "mochila_session"
@@ -65,6 +66,26 @@ class Settings(BaseSettings):
                 "RESIDENTIAL_PROXY must be configured when DOWNLOAD_EGRESS=residential"
             )
         return self
+
+    @field_validator("youtube_pot_provider_url")
+    @classmethod
+    def pot_provider_must_be_private_http_url(cls, value: str) -> str:
+        """Keep the unauthenticated provider on the internal Compose network."""
+        from urllib.parse import urlsplit
+
+        provider = urlsplit(value)
+        if provider.scheme != "http" or not provider.hostname:
+            raise ValueError("YOUTUBE_POT_PROVIDER_URL must be an http:// URL with a host")
+        if provider.username or provider.password:
+            raise ValueError("YOUTUBE_POT_PROVIDER_URL must not include credentials")
+        if provider.path not in ("", "/") or provider.query or provider.fragment:
+            raise ValueError("YOUTUBE_POT_PROVIDER_URL must not include a path, query, or fragment")
+        try:
+            if provider.port is None:
+                raise ValueError("YOUTUBE_POT_PROVIDER_URL must include a port")
+        except ValueError as exc:
+            raise ValueError("YOUTUBE_POT_PROVIDER_URL must include a valid port") from exc
+        return value.rstrip("/")
 
     def residential_proxy_url(self) -> str:
         """Return the configured proxy only for use by the downloader process."""
